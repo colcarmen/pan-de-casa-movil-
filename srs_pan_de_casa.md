@@ -1,4 +1,4 @@
-# Documento de Especificación Técnica de Software (SRS) - Pan de Casa (Versión Definitiva 2.0)
+# Documento de Especificación Técnica de Software (SRS) - Pan de Casa (Versión Definitiva 2.0) -revision acitividad fase 7 -
 
 Este documento representa la Ingeniería Inversa exhaustiva, verificada y auditada del sistema "Pan de Casa". Contiene la arquitectura lógica, el sistema de diseño, modelos de datos, flujos de usuario completos, y la infraestructura de calidad y estándares (ISO) subyacentes. Su propósito es servir como única fuente de la verdad para reconstruir la plataforma (P. ej., a un desarrollo móvil nativo o refactorización de framework moderno).
 
