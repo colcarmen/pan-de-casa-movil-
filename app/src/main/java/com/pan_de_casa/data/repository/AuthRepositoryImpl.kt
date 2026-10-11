@@ -3,50 +3,65 @@ package com.pan_de_casa.data.repository
 import com.pan_de_casa.domain.model.User
 import com.pan_de_casa.domain.model.UserRole
 import com.pan_de_casa.domain.repository.AuthRepository
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AuthRepositoryImpl @Inject constructor() : AuthRepository {
+class AuthRepositoryImpl @Inject constructor(
+    private val supabaseAuth: Auth
+) : AuthRepository {
 
-    private val _currentUser = MutableStateFlow<User?>(null)
-    override val currentUser: Flow<User?> = _currentUser.asStateFlow()
+    override val currentUser: Flow<User?> = supabaseAuth.sessionStatus
+        .map { _ -> 
+            supabaseAuth.currentUserOrNull()?.toDomain() 
+        }
+        .distinctUntilChanged()
 
     override suspend fun login(email: String, password: String): Result<User> {
-        // Simulación de login según SRS
-        return if (email == "admin@pandecasa.com" && password == "admin123") {
-            val user = User(
-                uid = "admin_uid",
-                email = email,
-                name = "Administrador",
-                role = UserRole.ADMIN
-            )
-            _currentUser.value = user
-            Result.success(user)
-        } else if (email == "cliente@pandecasa.com" && password == "cliente123") {
-            val user = User(
-                uid = "client_uid",
-                email = email,
-                name = "Cliente de Prueba",
-                role = UserRole.CLIENT,
-                address = "Calle Falsa 123",
-                phone = "555-1234"
-            )
-            _currentUser.value = user
-            Result.success(user)
-        } else {
-            Result.failure(Exception("Credenciales inválidas para la demo"))
+        return try {
+            supabaseAuth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+            val user = supabaseAuth.currentUserOrNull()?.toDomain()
+            if (user != null) {
+                Result.success(user)
+            } else {
+                Result.failure(Exception("No se pudo recuperar el perfil del usuario"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     override suspend fun logout() {
-        _currentUser.value = null
+        try {
+            supabaseAuth.signOut()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override suspend fun getCurrentUserRole(): String? {
-        return _currentUser.value?.role?.name
+        val user = supabaseAuth.currentUserOrNull()
+        return user?.userMetadata?.get("role")?.toString()?.replace("\"", "")
+    }
+
+    private fun UserInfo.toDomain(): User {
+        val roleStr = userMetadata?.get("role")?.toString()?.replace("\"", "") ?: "CLIENT"
+        return User(
+            uid = id,
+            email = email ?: "",
+            name = userMetadata?.get("name")?.toString()?.replace("\"", "") ?: "",
+            role = if (roleStr == "ADMIN") UserRole.ADMIN else UserRole.CLIENT,
+            address = userMetadata?.get("address")?.toString()?.replace("\"", "") ?: "",
+            phone = userMetadata?.get("phone")?.toString()?.replace("\"", "") ?: ""
+        )
     }
 }

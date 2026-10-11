@@ -2,29 +2,66 @@ package com.pan_de_casa.data.repository
 
 import com.pan_de_casa.data.local.dao.ProductDao
 import com.pan_de_casa.data.local.entity.ProductEntity
+import com.pan_de_casa.data.remote.dto.ProductDto
 import com.pan_de_casa.domain.model.Product
 import com.pan_de_casa.domain.repository.ProductRepository
+import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
-    private val productDao: ProductDao
+    private val productDao: ProductDao,
+    private val postgrest: Postgrest
 ) : ProductRepository {
 
-    override fun getProducts(): Flow<List<Product>> {
-        return productDao.getAllProducts().map { entities ->
-            entities.map { it.toDomain() }
+    override fun getProducts(): Flow<List<Product>> = flow {
+        try {
+            val remoteProducts = postgrest.from("products")
+                .select()
+                .decodeList<ProductDto>()
+            
+            val domainProducts = remoteProducts.map { it.toDomain() }
+            
+            productDao.deleteAllProducts()
+            productDao.insertProducts(domainProducts.map { ProductEntity.fromDomain(it) })
+            
+            emit(domainProducts)
+        } catch (e: Exception) {
+            emitAll(productDao.getAllProducts().map { entities ->
+                entities.map { it.toDomain() }
+            })
         }
     }
 
     override suspend fun getProductById(id: String): Product? {
-        return productDao.getProductById(id)?.toDomain()
+        return try {
+            val productId = id.toIntOrNull() ?: return null
+            val dto = postgrest.from("products")
+                .select {
+                    filter {
+                        eq("id", productId)
+                    }
+                }
+                .decodeSingleOrNull<ProductDto>()
+            dto?.toDomain()
+        } catch (e: Exception) {
+            productDao.getProductById(id)?.toDomain()
+        }
     }
 
     override suspend fun addProduct(product: Product): Result<Unit> {
         return try {
-            productDao.insertProduct(ProductEntity.fromDomain(product))
+            val dto = ProductDto(
+                name = product.name,
+                description = product.description,
+                price = product.price,
+                image_url = product.imageUrl,
+                category = product.category
+            )
+            postgrest.from("products").insert(dto)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -33,7 +70,19 @@ class ProductRepositoryImpl @Inject constructor(
 
     override suspend fun updateProduct(product: Product): Result<Unit> {
         return try {
-            productDao.updateProduct(ProductEntity.fromDomain(product))
+            val productId = product.id.toIntOrNull() ?: return Result.failure(Exception("ID inválido"))
+            val dto = ProductDto(
+                name = product.name,
+                description = product.description,
+                price = product.price,
+                image_url = product.imageUrl,
+                category = product.category
+            )
+            postgrest.from("products").update(dto) {
+                filter {
+                    eq("id", productId)
+                }
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -42,10 +91,26 @@ class ProductRepositoryImpl @Inject constructor(
 
     override suspend fun deleteProduct(id: String): Result<Unit> {
         return try {
-            productDao.deleteProduct(id)
+            val productId = id.toIntOrNull() ?: return Result.failure(Exception("ID inválido"))
+            postgrest.from("products").delete {
+                filter {
+                    eq("id", productId)
+                }
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun ProductDto.toDomain(): Product {
+        return Product(
+            id = id?.toString() ?: "",
+            name = name,
+            description = description,
+            price = price,
+            imageUrl = image_url ?: "",
+            category = category ?: "General"
+        )
     }
 }
