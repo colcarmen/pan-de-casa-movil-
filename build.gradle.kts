@@ -9,5 +9,5 @@ plugins {
 
 // Redirect build directory outside of OneDrive to avoid file locking issues
 allprojects {
-    layout.buildDirectory.set(file("C:/AndroidBuilds/PAN_CASA/${project.name}"))
+    layout.buildDirectory.set(file("C:/temp/gradle-builds/PAN_CASA/${project.name}"))
 }
