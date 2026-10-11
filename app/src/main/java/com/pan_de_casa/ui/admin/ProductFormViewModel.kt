@@ -1,5 +1,6 @@
 package com.pan_de_casa.ui.admin
 
+import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -7,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.pan_de_casa.domain.model.Product
 import com.pan_de_casa.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,8 @@ sealed class ProductFormState {
 
 @HiltViewModel
 class ProductFormViewModel @Inject constructor(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ProductFormState>(ProductFormState.Idle)
@@ -37,7 +40,7 @@ class ProductFormViewModel @Inject constructor(
     var currentImageUrl = mutableStateOf("")
 
     fun loadProduct(productId: String) {
-        if (productId == "{productId}") return
+        if (productId == "{productId}" || productId.isEmpty()) return
         viewModelScope.launch {
             productRepository.getProductById(productId)?.let { product ->
                 name.value = product.name
@@ -49,9 +52,15 @@ class ProductFormViewModel @Inject constructor(
         }
     }
 
-    private suspend fun uploadImage(uri: Uri): String {
-        // Simulación: En la demo local devolvemos el URI como string
-        return uri.toString()
+    private suspend fun uploadImage(uri: Uri): String? {
+        return try {
+            val bytes = context.contentResolver.openInputStream(uri)?.readBytes() ?: return null
+            val fileName = "prod_${UUID.randomUUID()}.jpg"
+            val result = productRepository.uploadProductImage(bytes, fileName)
+            result.getOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun saveProduct(productId: String?) {
@@ -61,7 +70,7 @@ class ProductFormViewModel @Inject constructor(
                 val finalImageUrl = imageUri.value?.let { uploadImage(it) } ?: currentImageUrl.value
                 
                 val product = Product(
-                    id = if (productId != null && productId != "{productId}") productId else "p" + System.currentTimeMillis(),
+                    id = if (productId != null && productId != "{productId}" && productId.isNotEmpty()) productId else "",
                     name = name.value,
                     description = description.value,
                     price = price.value.toDoubleOrNull() ?: 0.0,
@@ -69,12 +78,17 @@ class ProductFormViewModel @Inject constructor(
                     category = category.value
                 )
 
-                if (productId == null || productId == "{productId}") {
+                val result = if (product.id.isEmpty()) {
                     productRepository.addProduct(product)
                 } else {
                     productRepository.updateProduct(product)
                 }
-                _state.value = ProductFormState.Success
+
+                if (result.isSuccess) {
+                    _state.value = ProductFormState.Success
+                } else {
+                    _state.value = ProductFormState.Error(result.exceptionOrNull()?.message ?: "Error al guardar")
+                }
             } catch (e: Exception) {
                 _state.value = ProductFormState.Error(e.message ?: "Error al guardar")
             }

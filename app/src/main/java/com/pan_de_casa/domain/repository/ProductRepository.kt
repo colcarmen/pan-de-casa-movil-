@@ -9,4 +9,5 @@ interface ProductRepository {
     suspend fun addProduct(product: Product): Result<Unit>
     suspend fun updateProduct(product: Product): Result<Unit>
     suspend fun deleteProduct(id: String): Result<Unit>
+    suspend fun uploadProductImage(bytes: ByteArray, fileName: String): Result<String>
 }

@@ -6,6 +6,7 @@ import com.pan_de_casa.data.remote.dto.ProductDto
 import com.pan_de_casa.domain.model.Product
 import com.pan_de_casa.domain.repository.ProductRepository
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
     private val productDao: ProductDao,
-    private val postgrest: Postgrest
+    private val postgrest: Postgrest,
+    private val storage: Storage
 ) : ProductRepository {
 
     override fun getProducts(): Flow<List<Product>> = flow {
@@ -98,6 +100,17 @@ class ProductRepositoryImpl @Inject constructor(
                 }
             }
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun uploadProductImage(bytes: ByteArray, fileName: String): Result<String> {
+        return try {
+            val bucket = storage.from("product-images")
+            bucket.upload(path = fileName, data = bytes, upsert = true)
+            val publicUrl = bucket.publicUrl(fileName)
+            Result.success(publicUrl)
         } catch (e: Exception) {
             Result.failure(e)
         }

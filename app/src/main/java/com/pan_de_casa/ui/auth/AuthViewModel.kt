@@ -3,7 +3,6 @@ package com.pan_de_casa.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pan_de_casa.domain.model.User
-import com.pan_de_casa.domain.model.UserRole
 import com.pan_de_casa.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +50,20 @@ class AuthViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Error desconocido")
+                }
+        }
+    }
+
+    fun register(email: String, password: String, name: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            authRepository.signUp(email, password, name)
+                .onSuccess {
+                    // Después del registro exitoso, intentamos hacer login automático
+                    login(email, password)
+                }
+                .onFailure { error ->
+                    _authState.value = AuthState.Error(error.message ?: "Error al registrar usuario")
                 }
         }
     }

@@ -77,9 +77,7 @@ fun RegisterScreen(
         } else {
             Button(
                 onClick = { 
-                    // En una implementación real, aquí llamaríamos a register()
-                    // Por ahora usamos la misma lógica de login para avanzar
-                    viewModel.login(email, password) 
+                    viewModel.register(email, password, name)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = email.isNotEmpty() && password.isNotEmpty() && name.isNotEmpty()
