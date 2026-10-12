@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "155134258335",
+    "project_id": "pan-de-casa-beaa8",
+    "storage_bucket": "pan-de-casa-beaa8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155134258335:android:5e07e59471750cf12406aa",
+        "android_client_info": {
+          "package_name": "com.pan_de_casa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtw2dhp9UhenMSvgTuMVG4OCfmlM8Qmyw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -25,9 +25,7 @@ fun OrderStatusScreen(
     onNavigateBack: () -> Unit,
     viewModel: OrderViewModel = hiltViewModel()
 ) {
-    // En una implementación real, el ViewModel tendría un Flow para una orden específica
-    // Por ahora simularemos la obtención de la orden
-    val order = remember { mutableStateOf<Order?>(null) }
+    val orderState by viewModel.getOrder(orderId).collectAsState(initial = null)
     
     Scaffold(
         topBar = {
@@ -56,8 +54,8 @@ fun OrderStatusScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Barra de Progreso de 4 pasos (según SRS)
-            val currentStatus = OrderStatus.RECIBIDO // Esto vendría del Flow de Firebase
+            // Barra de Progreso de 4 pasos (en tiempo real desde Firebase)
+            val currentStatus = orderState?.status ?: OrderStatus.RECIBIDO
             OrderProgressBar(currentStatus)
             
             Spacer(modifier = Modifier.height(48.dp))

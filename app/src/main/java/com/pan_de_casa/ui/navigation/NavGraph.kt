@@ -23,7 +23,7 @@ import com.pan_de_casa.ui.product.ClientCatalogScreen
 fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Login.route
+    startDestination: String = Screen.ClientCatalog.route
 ) {
     NavHost(
         navController = navController,
@@ -113,6 +113,7 @@ fun NavGraph(
             AdminDashboardScreen(
                 onNavigateToOrders = { navController.navigate(Screen.AdminOrders.route) },
                 onNavigateToCatalog = { navController.navigate(Screen.AdminCatalog.route) },
+                onNavigateToClientCatalog = { navController.navigate(Screen.ClientCatalog.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }

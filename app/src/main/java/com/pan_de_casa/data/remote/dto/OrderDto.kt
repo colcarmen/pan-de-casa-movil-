@@ -1,24 +1,28 @@
 package com.pan_de_casa.data.remote.dto
 
-import kotlinx.serialization.Serializable
+import com.google.firebase.firestore.DocumentId
 
-@Serializable
-data class OrderDto(
+data class OrderItemDto(
     val id: String? = null,
-    val customer_id: String,
-    val total: Double,
-    val status: String,
-    val created_at: Long,
-    val customer_name: String,
-    val customer_address: String,
-    val customer_phone: String
+    val orderId: String = "",
+    val productId: String = "",
+    val productName: String = "",
+    val productPrice: Double = 0.0,
+    val productImageUrl: String = "",
+    val productDescription: String = "",
+    val quantity: Int = 1,
+    val priceAtTime: Double = 0.0
 )
 
-@Serializable
-data class OrderItemDto(
-    val id: Long? = null,
-    val order_id: String,
-    val product_id: Long,
-    val quantity: Int,
-    val price_at_time: Double
+data class OrderDto(
+    @DocumentId
+    val id: String? = null,
+    val customerId: String = "",
+    val total: Double = 0.0,
+    val status: String = "RECIBIDO",
+    val createdAt: Long = 0L,
+    val customerName: String = "",
+    val customerAddress: String = "",
+    val customerPhone: String = "",
+    val items: List<OrderItemDto> = emptyList()
 )

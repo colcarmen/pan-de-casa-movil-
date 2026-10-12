@@ -83,4 +83,8 @@ class OrderViewModel @Inject constructor(
     fun resetCheckoutState() {
         _checkoutState.value = CheckoutState.Idle
     }
+
+    fun getOrder(orderId: String): Flow<Order?> {
+        return orderRepository.getOrderById(orderId)
+    }
 }

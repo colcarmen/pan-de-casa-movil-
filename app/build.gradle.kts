@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     id("com.google.devtools.ksp")
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -77,18 +78,12 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // Supabase
-    implementation(platform(libs.supabase.bom))
-    implementation(libs.supabase.postgrest)
-    implementation(libs.supabase.auth)
-    implementation(libs.supabase.realtime)
-    implementation(libs.supabase.storage)
-
-    // Ktor
-    implementation(libs.ktor.client.android)
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.contentNegotiation)
-    implementation(libs.ktor.serialization.kotlinxJson)
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

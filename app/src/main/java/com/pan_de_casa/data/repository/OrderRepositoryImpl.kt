@@ -1,5 +1,6 @@
 package com.pan_de_casa.data.repository
 
+import com.google.firebase.firestore.FirebaseFirestore
 import com.pan_de_casa.data.local.dao.OrderDao
 import com.pan_de_casa.data.local.entity.OrderEntity
 import com.pan_de_casa.data.remote.dto.OrderDto
@@ -7,28 +8,32 @@ import com.pan_de_casa.data.remote.dto.OrderItemDto
 import com.pan_de_casa.domain.model.CartItem
 import com.pan_de_casa.domain.model.Order
 import com.pan_de_casa.domain.model.OrderStatus
+import com.pan_de_casa.domain.model.Product
 import com.pan_de_casa.domain.repository.OrderRepository
-import io.github.jan.supabase.postgrest.Postgrest
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
-    private val postgrest: Postgrest
+    private val firestore: FirebaseFirestore
 ) : OrderRepository {
 
     override fun getOrders(): Flow<List<Order>> = flow {
         try {
-            val remoteOrders = postgrest.from("orders")
-                .select()
-                .decodeList<OrderDto>()
-            
-            val domainOrders = remoteOrders.map { it.toDomain(emptyList()) }
+            val snapshot = firestore.collection("orders").get().await()
+            val domainOrders = snapshot.documents.mapNotNull { doc ->
+                val dto = doc.toObject(OrderDto::class.java)
+                dto?.copy(id = doc.id)?.toDomain()
+            }
             emit(domainOrders)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseError", "Error getOrders: ${e.message}", e)
             emitAll(orderDao.getAllOrders().map { entities ->
                 entities.map { it.toDomain() }
             })
@@ -37,111 +42,121 @@ class OrderRepositoryImpl @Inject constructor(
 
     override fun getOrdersByCustomer(customerId: String): Flow<List<Order>> = flow {
         try {
-            val remoteOrders = postgrest.from("orders")
-                .select {
-                    filter {
-                        eq("customer_id", customerId)
-                    }
-                }
-                .decodeList<OrderDto>()
-            
-            emit(remoteOrders.map { it.toDomain(emptyList()) })
+            val snapshot = firestore.collection("orders")
+                .whereEqualTo("customerId", customerId)
+                .get()
+                .await()
+            val domainOrders = snapshot.documents.mapNotNull { doc ->
+                val dto = doc.toObject(OrderDto::class.java)
+                dto?.copy(id = doc.id)?.toDomain()
+            }
+            emit(domainOrders)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseError", "Error getOrdersByCustomer: ${e.message}", e)
             emitAll(orderDao.getOrdersByCustomer(customerId).map { entities ->
                 entities.map { it.toDomain() }
             })
         }
     }
 
-    override fun getOrderById(orderId: String): Flow<Order?> = flow {
-        try {
-            val dto = postgrest.from("orders")
-                .select {
-                    filter {
-                        eq("id", orderId)
-                    }
+    override fun getOrderById(orderId: String): Flow<Order?> = callbackFlow {
+        val listener = firestore.collection("orders").document(orderId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("FirebaseError", "Error en listener getOrderById: ${error.message}", error)
+                    return@addSnapshotListener
                 }
-                .decodeSingleOrNull<OrderDto>()
-            
-            emit(dto?.toDomain(emptyList()))
-        } catch (e: Exception) {
-            emitAll(orderDao.getOrderById(orderId).map { it?.toDomain() })
-        }
+                if (snapshot != null && snapshot.exists()) {
+                    val dto = snapshot.toObject(OrderDto::class.java)
+                    trySend(dto?.copy(id = snapshot.id)?.toDomain())
+                }
+            }
+        awaitClose { listener.remove() }
     }
 
     override suspend fun placeOrder(order: Order): Result<String> {
         return try {
             val orderId = "ORD-" + System.currentTimeMillis().toString().takeLast(6)
-            
-            val orderDto = OrderDto(
-                id = orderId,
-                customer_id = order.customerId,
-                total = order.total,
-                status = order.status.name,
-                created_at = order.timestamp,
-                customer_name = order.customerName,
-                customer_address = order.customerAddress,
-                customer_phone = order.customerPhone
-            )
-            
-            postgrest.from("orders").insert(orderDto)
-            
-            val itemsDto = order.items.mapNotNull { item ->
-                val productId = item.product.id.toLongOrNull() ?: return@mapNotNull null
+
+            val itemsDto = order.items.map { item ->
                 OrderItemDto(
-                    order_id = orderId,
-                    product_id = productId,
+                    productId = item.product.id,
+                    productName = item.product.name,
+                    productPrice = item.product.price,
+                    productImageUrl = item.product.imageUrl,
+                    productDescription = item.product.description,
                     quantity = item.quantity,
-                    price_at_time = item.product.price
+                    priceAtTime = item.product.price
                 )
             }
-            
-            if (itemsDto.isNotEmpty()) {
-                postgrest.from("order_items").insert(itemsDto)
-            }
-            
+
+            val orderDto = OrderDto(
+                id = orderId,
+                customerId = order.customerId,
+                total = order.total,
+                status = order.status.name,
+                createdAt = order.timestamp,
+                customerName = order.customerName,
+                customerAddress = order.customerAddress,
+                customerPhone = order.customerPhone,
+                items = itemsDto
+            )
+
+            firestore.collection("orders").document(orderId).set(orderDto).await()
+
             val orderWithId = order.copy(id = orderId)
             orderDao.insertOrder(OrderEntity.fromDomain(orderWithId))
-            
+
             Result.success(orderId)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseError", "Error placeOrder: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     override suspend fun updateOrderStatus(orderId: String, status: OrderStatus): Result<Unit> {
         return try {
-            postgrest.from("orders").update({
-                set("status", status.name)
-            }) {
-                filter {
-                    eq("id", orderId)
-                }
-            }
+            firestore.collection("orders").document(orderId)
+                .update("status", status.name)
+                .await()
             orderDao.updateOrderStatus(orderId, status)
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseError", "Error updateOrderStatus: ${e.message}", e)
             Result.failure(e)
         }
     }
 
-    private fun OrderDto.toDomain(items: List<CartItem>): Order {
+    private fun OrderDto.toDomain(): Order {
         val domainStatus = try {
             OrderStatus.valueOf(status)
         } catch (e: Exception) {
             OrderStatus.RECIBIDO
         }
-        
+
+        val domainItems = items.map { itemDto ->
+            CartItem(
+                product = Product(
+                    id = itemDto.productId,
+                    name = itemDto.productName,
+                    description = itemDto.productDescription,
+                    price = itemDto.priceAtTime.takeIf { it > 0 } ?: itemDto.productPrice,
+                    imageUrl = itemDto.productImageUrl
+                ),
+                quantity = itemDto.quantity
+            )
+        }
+
         return Order(
             id = id ?: "",
-            customerId = customer_id,
+            customerId = customerId,
             total = total,
             status = domainStatus,
-            timestamp = created_at,
-            items = items,
-            customerName = customer_name,
-            customerAddress = customer_address,
-            customerPhone = customer_phone
+            timestamp = createdAt,
+            items = domainItems,
+            customerName = customerName,
+            customerAddress = customerAddress,
+            customerPhone = customerPhone
         )
     }
 }

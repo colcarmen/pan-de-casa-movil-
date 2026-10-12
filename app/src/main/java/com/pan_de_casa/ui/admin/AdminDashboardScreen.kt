@@ -21,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 fun AdminDashboardScreen(
     onNavigateToOrders: () -> Unit,
     onNavigateToCatalog: () -> Unit,
+    onNavigateToClientCatalog: () -> Unit,
     onLogout: () -> Unit,
     viewModel: AdminDashboardViewModel = hiltViewModel()
 ) {
@@ -70,25 +71,35 @@ fun AdminDashboardScreen(
             }
             
             item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = onNavigateToOrders,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(12.dp)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.AutoMirrored.Filled.ListAlt, null)
-                            Text("Ver Pedidos")
+                            Text("Pedidos")
                         }
                     }
                     Button(
                         onClick = onNavigateToCatalog,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(12.dp)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Inventory, null)
-                            Text("Catálogo")
+                            Text("Gestionar")
+                        }
+                    }
+                    Button(
+                        onClick = onNavigateToClientCatalog,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(12.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Storefront, null)
+                            Text("Ver Tienda")
                         }
                     }
                 }
