@@ -21,10 +21,12 @@ class ProductRepositoryImpl @Inject constructor(
 
     override fun getProducts(): Flow<List<Product>> = flow {
         try {
+            android.util.Log.d("SupabaseDebug", "Conectando a Supabase para obtener catálogo...")
             val remoteProducts = postgrest.from("products")
                 .select()
                 .decodeList<ProductDto>()
             
+            android.util.Log.d("SupabaseDebug", "Productos obtenidos de Supabase con éxito: ${remoteProducts.size}")
             val domainProducts = remoteProducts.map { it.toDomain() }
             
             productDao.deleteAllProducts()
@@ -32,6 +34,7 @@ class ProductRepositoryImpl @Inject constructor(
             
             emit(domainProducts)
         } catch (e: Exception) {
+            android.util.Log.e("SupabaseError", ">>> ERROR DE CONEXIÓN A SUPABASE: ${e.javaClass.simpleName} - ${e.message} <<<", e)
             emitAll(productDao.getAllProducts().map { entities ->
                 entities.map { it.toDomain() }
             })
@@ -40,7 +43,7 @@ class ProductRepositoryImpl @Inject constructor(
 
     override suspend fun getProductById(id: String): Product? {
         return try {
-            val productId = id.toIntOrNull() ?: return null
+            val productId = id.toLongOrNull() ?: return null
             val dto = postgrest.from("products")
                 .select {
                     filter {
@@ -50,6 +53,7 @@ class ProductRepositoryImpl @Inject constructor(
                 .decodeSingleOrNull<ProductDto>()
             dto?.toDomain()
         } catch (e: Exception) {
+            android.util.Log.e("SupabaseError", "Error getProductById($id): ${e.message}", e)
             productDao.getProductById(id)?.toDomain()
         }
     }
@@ -66,13 +70,14 @@ class ProductRepositoryImpl @Inject constructor(
             postgrest.from("products").insert(dto)
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("SupabaseError", "Error addProduct: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     override suspend fun updateProduct(product: Product): Result<Unit> {
         return try {
-            val productId = product.id.toIntOrNull() ?: return Result.failure(Exception("ID inválido"))
+            val productId = product.id.toLongOrNull() ?: return Result.failure(Exception("ID inválido"))
             val dto = ProductDto(
                 name = product.name,
                 description = product.description,
@@ -87,20 +92,28 @@ class ProductRepositoryImpl @Inject constructor(
             }
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("SupabaseError", "Error updateProduct: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     override suspend fun deleteProduct(id: String): Result<Unit> {
         return try {
-            val productId = id.toIntOrNull() ?: return Result.failure(Exception("ID inválido"))
-            postgrest.from("products").delete {
-                filter {
-                    eq("id", productId)
+            val productId = id.toLongOrNull()
+            if (productId != null) {
+                postgrest.from("products").delete {
+                    filter {
+                        eq("id", productId)
+                    }
                 }
             }
+            // También eliminamos de la base de datos local para mantener sincronía
+            productDao.deleteProduct(id)
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("SupabaseError", "Error deleteProduct: ${e.message}", e)
+            // Aún si falla en remoto, limpiamos localmente
+            productDao.deleteProduct(id)
             Result.failure(e)
         }
     }
