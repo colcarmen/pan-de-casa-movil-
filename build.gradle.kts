@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
-// Redirect build directory outside of OneDrive to avoid file locking issues
 allprojects {
-    layout.buildDirectory.set(file("C:/temp/gradle-builds/PAN_CASA/${project.name}"))
+    // Redirect build directory outside of OneDrive to avoid file locking issues
+    layout.buildDirectory.set(file("C:/temp/AndroidBuilds/PAN_DE_CASA/${project.name}"))
 }
