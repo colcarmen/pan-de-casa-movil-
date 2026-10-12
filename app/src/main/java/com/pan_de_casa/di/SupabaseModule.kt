@@ -20,6 +20,14 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object SupabaseModule {
 
+    // =========================================================================
+    // CREDENCIALES DE SUPABASE
+    // =========================================================================
+    // Reemplaza estos valores con los de tu proyecto en https://supabase.com:
+    // Dashboard -> Project Settings -> API:
+    // 1. Project URL (supabaseUrl)
+    // 2. Project API Key (anon public key)
+    // =========================================================================
     private const val SUPABASE_URL = "https://yzmdtiwvwumjynuwhodz.supabase.co"
     private const val SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6bWR0aXd2d3VtanludXdob2R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NDkyNzUsImV4cCI6MjEwNzMyNTI3NX0.L4fqVQm_F9WJRKWZSZ5BbdMB0wX_H0oEsj6tWUqYwHU"
 

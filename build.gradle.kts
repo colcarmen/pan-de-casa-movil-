@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
+// Redirect build directory outside of OneDrive to avoid file locking issues (common on Windows with OneDrive)
 allprojects {
-    // Redirect build directory outside of OneDrive to avoid file locking issues
-    layout.buildDirectory.set(file("C:/temp/AndroidBuilds/PAN_DE_CASA/${project.name}"))
+    layout.buildDirectory.set(file("C:/AndroidBuilds/PAN_DE_CASA/${project.name}"))
 }
