@@ -87,7 +87,7 @@ class OrderRepositoryImpl @Inject constructor(
             postgrest.from("orders").insert(orderDto)
             
             val itemsDto = order.items.mapNotNull { item ->
-                val productId = item.product.id.toIntOrNull() ?: return@mapNotNull null
+                val productId = item.product.id.toLongOrNull() ?: return@mapNotNull null
                 OrderItemDto(
                     order_id = orderId,
                     product_id = productId,

@@ -16,9 +16,9 @@ data class OrderDto(
 
 @Serializable
 data class OrderItemDto(
-    val id: Int? = null,
+    val id: Long? = null,
     val order_id: String,
-    val product_id: Int,
+    val product_id: Long,
     val quantity: Int,
     val price_at_time: Double
 )
